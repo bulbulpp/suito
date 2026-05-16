@@ -1,0 +1,93 @@
+# ============================================
+# suito .gitignore — Flutter + Rust + 開発補助
+# ============================================
+# .cursorignore は Cursor のコンテキスト除外。
+# こちらは Git の追跡除外。役割が違うので両方必要。
+
+# === エージェント用プロンプト（GitHub には公開しない） ===
+prompts/
+
+# === ローカル運用ルール（GitHub に出さない） ===
+.cursor/rules/windows-shell.mdc
+
+# === 環境変数・秘密情報 ===
+.env
+.env.*
+.env.local
+*.pem
+*.p12
+*.jks
+*.keystore
+secrets/
+.secrets/
+private/
+
+# === 鍵関連 ===
+*.key
+*.crt
+**/keystore.properties
+**/key.properties
+android/key.properties
+ios/Runner/GoogleService-Info.plist
+android/app/google-services.json
+
+# === Flutter / Dart ビルド成果物 ===
+build/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+.fvm/
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework/
+ios/Flutter/Flutter.podspec
+ios/Flutter/flutter_export_environment.sh
+ios/Flutter/Generated.xcconfig
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/captures/
+android/gradlew
+android/gradlew.bat
+android/gradle-wrapper.jar
+**/*.iml
+
+# === Rust ===
+rust/target/
+target/
+**/*.rs.bk
+
+# === コード生成物（ローカルで再生成可能） ===
+**/*.g.dart
+**/*.freezed.dart
+**/*.gr.dart
+**/*.mocks.dart
+**/*.config.dart
+
+# 注: flutter_rust_bridge 生成物（lib/src/rust/**, rust/src/frb_generated*.rs）は
+# Flutter ビルドに必要なので git に **含める**（meiso 方式）。
+# .cursorignore では Cursor のコンテキストから除外しているが、git では追跡する。
+
+# === OS / IDE ===
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*~
+
+# === ログ ===
+*.log
+logs/
+
+# === Cursor セッションメモリ ===
+.cursor/memory.json
+
+# === デバッグダンプ ===
+*.heap
+*.prof
+flamegraph.svg
