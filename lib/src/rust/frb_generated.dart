@@ -3,6 +3,7 @@
 
 // ignore_for_file: unused_import, unused_element, unnecessary_import, duplicate_ignore, invalid_use_of_internal_member, annotate_overrides, non_constant_identifier_names, curly_braces_in_flow_control_structures, prefer_const_literals_to_create_immutables, unused_field
 
+import 'api/bitcoin.dart';
 import 'api/exchange.dart';
 import 'api/greet.dart';
 import 'dart:async';
@@ -67,7 +68,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.12.0';
 
   @override
-  int get rustContentHash => 1085497855;
+  int get rustContentHash => -769199697;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -79,6 +80,11 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
 }
 
 abstract class RustLibApi extends BaseApi {
+  Future<BuiltBitcoinRecordSnapshot>
+  crateApiBitcoinBuildBitcoinRecordSnapshotFromSat({
+    required PlatformInt64 satAmount,
+  });
+
   Future<List<FetchedExchangeRate>>
   crateApiExchangeFetchExchangeRatesFromNetwork();
 
@@ -96,6 +102,41 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   });
 
   @override
+  Future<BuiltBitcoinRecordSnapshot>
+  crateApiBitcoinBuildBitcoinRecordSnapshotFromSat({
+    required PlatformInt64 satAmount,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_i_64(satAmount, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 1,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_built_bitcoin_record_snapshot,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiBitcoinBuildBitcoinRecordSnapshotFromSatConstMeta,
+        argValues: [satAmount],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta
+  get kCrateApiBitcoinBuildBitcoinRecordSnapshotFromSatConstMeta =>
+      const TaskConstMeta(
+        debugName: "build_bitcoin_record_snapshot_from_sat",
+        argNames: ["satAmount"],
+      );
+
+  @override
   Future<List<FetchedExchangeRate>>
   crateApiExchangeFetchExchangeRatesFromNetwork() {
     return handler.executeNormal(
@@ -105,7 +146,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 1,
+            funcId: 2,
             port: port_,
           );
         },
@@ -136,7 +177,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 2,
+            funcId: 3,
             port: port_,
           );
         },
@@ -163,7 +204,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 3,
+            funcId: 4,
             port: port_,
           );
         },
@@ -191,6 +232,24 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   String dco_decode_String(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as String;
+  }
+
+  @protected
+  BuiltBitcoinRecordSnapshot dco_decode_built_bitcoin_record_snapshot(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 6)
+      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
+    return BuiltBitcoinRecordSnapshot(
+      satAmount: dco_decode_i_64(arr[0]),
+      jpyAtRecordTime: dco_decode_i_64(arr[1]),
+      usdCentsAtRecordTime: dco_decode_i_64(arr[2]),
+      btcJpyRate: dco_decode_i_64(arr[3]),
+      btcUsdCentRate: dco_decode_i_64(arr[4]),
+      recordedAtMillisSinceEpochUtc: dco_decode_i_64(arr[5]),
+    );
   }
 
   @protected
@@ -257,6 +316,27 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var inner = sse_decode_list_prim_u_8_strict(deserializer);
     return utf8.decoder.convert(inner);
+  }
+
+  @protected
+  BuiltBitcoinRecordSnapshot sse_decode_built_bitcoin_record_snapshot(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_satAmount = sse_decode_i_64(deserializer);
+    var var_jpyAtRecordTime = sse_decode_i_64(deserializer);
+    var var_usdCentsAtRecordTime = sse_decode_i_64(deserializer);
+    var var_btcJpyRate = sse_decode_i_64(deserializer);
+    var var_btcUsdCentRate = sse_decode_i_64(deserializer);
+    var var_recordedAtMillisSinceEpochUtc = sse_decode_i_64(deserializer);
+    return BuiltBitcoinRecordSnapshot(
+      satAmount: var_satAmount,
+      jpyAtRecordTime: var_jpyAtRecordTime,
+      usdCentsAtRecordTime: var_usdCentsAtRecordTime,
+      btcJpyRate: var_btcJpyRate,
+      btcUsdCentRate: var_btcUsdCentRate,
+      recordedAtMillisSinceEpochUtc: var_recordedAtMillisSinceEpochUtc,
+    );
   }
 
   @protected
@@ -350,6 +430,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   void sse_encode_String(String self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_list_prim_u_8_strict(utf8.encoder.convert(self), serializer);
+  }
+
+  @protected
+  void sse_encode_built_bitcoin_record_snapshot(
+    BuiltBitcoinRecordSnapshot self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_64(self.satAmount, serializer);
+    sse_encode_i_64(self.jpyAtRecordTime, serializer);
+    sse_encode_i_64(self.usdCentsAtRecordTime, serializer);
+    sse_encode_i_64(self.btcJpyRate, serializer);
+    sse_encode_i_64(self.btcUsdCentRate, serializer);
+    sse_encode_i_64(self.recordedAtMillisSinceEpochUtc, serializer);
   }
 
   @protected

@@ -38,7 +38,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.12.0";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 1085497855;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -769199697;
 
 // Section: executor
 
@@ -46,6 +46,46 @@ flutter_rust_bridge::frb_generated_default_handler!();
 
 // Section: wire_funcs
 
+fn wire__crate__api__bitcoin__build_bitcoin_record_snapshot_from_sat_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "build_bitcoin_record_snapshot_from_sat",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_sat_amount = <i64>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| async move {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || async move {
+                        let output_ok =
+                            crate::api::bitcoin::build_bitcoin_record_snapshot_from_sat(
+                                api_sat_amount,
+                            )
+                            .await?;
+                        Ok(output_ok)
+                    })()
+                    .await,
+                )
+            }
+        },
+    )
+}
 fn wire__crate__api__exchange__fetch_exchange_rates_from_network_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -168,6 +208,26 @@ impl SseDecode for String {
     }
 }
 
+impl SseDecode for crate::api::bitcoin::BuiltBitcoinRecordSnapshot {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_satAmount = <i64>::sse_decode(deserializer);
+        let mut var_jpyAtRecordTime = <i64>::sse_decode(deserializer);
+        let mut var_usdCentsAtRecordTime = <i64>::sse_decode(deserializer);
+        let mut var_btcJpyRate = <i64>::sse_decode(deserializer);
+        let mut var_btcUsdCentRate = <i64>::sse_decode(deserializer);
+        let mut var_recordedAtMillisSinceEpochUtc = <i64>::sse_decode(deserializer);
+        return crate::api::bitcoin::BuiltBitcoinRecordSnapshot {
+            sat_amount: var_satAmount,
+            jpy_at_record_time: var_jpyAtRecordTime,
+            usd_cents_at_record_time: var_usdCentsAtRecordTime,
+            btc_jpy_rate: var_btcJpyRate,
+            btc_usd_cent_rate: var_btcUsdCentRate,
+            recorded_at_millis_since_epoch_utc: var_recordedAtMillisSinceEpochUtc,
+        };
+    }
+}
+
 impl SseDecode for crate::api::exchange::FetchedExchangeRate {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -263,14 +323,20 @@ fn pde_ffi_dispatcher_primary_impl(
 ) {
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
-        1 => wire__crate__api__exchange__fetch_exchange_rates_from_network_impl(
+        1 => wire__crate__api__bitcoin__build_bitcoin_record_snapshot_from_sat_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        2 => wire__crate__api__greet__greet_impl(port, ptr, rust_vec_len, data_len),
-        3 => wire__crate__api__greet__init_app_impl(port, ptr, rust_vec_len, data_len),
+        2 => wire__crate__api__exchange__fetch_exchange_rates_from_network_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        3 => wire__crate__api__greet__greet_impl(port, ptr, rust_vec_len, data_len),
+        4 => wire__crate__api__greet__init_app_impl(port, ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -289,6 +355,33 @@ fn pde_ffi_dispatcher_sync_impl(
 
 // Section: rust2dart
 
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::bitcoin::BuiltBitcoinRecordSnapshot {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.sat_amount.into_into_dart().into_dart(),
+            self.jpy_at_record_time.into_into_dart().into_dart(),
+            self.usd_cents_at_record_time.into_into_dart().into_dart(),
+            self.btc_jpy_rate.into_into_dart().into_dart(),
+            self.btc_usd_cent_rate.into_into_dart().into_dart(),
+            self.recorded_at_millis_since_epoch_utc
+                .into_into_dart()
+                .into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::bitcoin::BuiltBitcoinRecordSnapshot
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::bitcoin::BuiltBitcoinRecordSnapshot>
+    for crate::api::bitcoin::BuiltBitcoinRecordSnapshot
+{
+    fn into_into_dart(self) -> crate::api::bitcoin::BuiltBitcoinRecordSnapshot {
+        self
+    }
+}
 // Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::api::exchange::FetchedExchangeRate {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
@@ -326,6 +419,18 @@ impl SseEncode for String {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <Vec<u8>>::sse_encode(self.into_bytes(), serializer);
+    }
+}
+
+impl SseEncode for crate::api::bitcoin::BuiltBitcoinRecordSnapshot {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i64>::sse_encode(self.sat_amount, serializer);
+        <i64>::sse_encode(self.jpy_at_record_time, serializer);
+        <i64>::sse_encode(self.usd_cents_at_record_time, serializer);
+        <i64>::sse_encode(self.btc_jpy_rate, serializer);
+        <i64>::sse_encode(self.btc_usd_cent_rate, serializer);
+        <i64>::sse_encode(self.recorded_at_millis_since_epoch_utc, serializer);
     }
 }
 

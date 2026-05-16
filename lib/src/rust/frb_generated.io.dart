@@ -3,6 +3,7 @@
 
 // ignore_for_file: unused_import, unused_element, unnecessary_import, duplicate_ignore, invalid_use_of_internal_member, annotate_overrides, non_constant_identifier_names, curly_braces_in_flow_control_structures, prefer_const_literals_to_create_immutables, unused_field
 
+import 'api/bitcoin.dart';
 import 'api/exchange.dart';
 import 'api/greet.dart';
 import 'dart:async';
@@ -24,6 +25,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   String dco_decode_String(dynamic raw);
+
+  @protected
+  BuiltBitcoinRecordSnapshot dco_decode_built_bitcoin_record_snapshot(
+    dynamic raw,
+  );
 
   @protected
   FetchedExchangeRate dco_decode_fetched_exchange_rate(dynamic raw);
@@ -51,6 +57,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   String sse_decode_String(SseDeserializer deserializer);
+
+  @protected
+  BuiltBitcoinRecordSnapshot sse_decode_built_bitcoin_record_snapshot(
+    SseDeserializer deserializer,
+  );
 
   @protected
   FetchedExchangeRate sse_decode_fetched_exchange_rate(
@@ -91,6 +102,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_String(String self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_built_bitcoin_record_snapshot(
+    BuiltBitcoinRecordSnapshot self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_fetched_exchange_rate(
