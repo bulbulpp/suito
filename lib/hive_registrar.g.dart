@@ -3,11 +3,13 @@
 // Check in to version control
 
 import 'package:hive_ce/hive_ce.dart';
+import 'package:suito/features/category/infrastructure/models/category_hive_model.dart';
 import 'package:suito/features/transaction/infrastructure/models/transaction_hive_model.dart';
 
 extension HiveRegistrar on HiveInterface {
   void registerAdapters() {
     registerAdapter(BitcoinSnapshotHiveModelAdapter());
+    registerAdapter(CategoryHiveModelAdapter());
     registerAdapter(TransactionHiveModelAdapter());
   }
 }
@@ -15,6 +17,7 @@ extension HiveRegistrar on HiveInterface {
 extension IsolatedHiveRegistrar on IsolatedHiveInterface {
   void registerAdapters() {
     registerAdapter(BitcoinSnapshotHiveModelAdapter());
+    registerAdapter(CategoryHiveModelAdapter());
     registerAdapter(TransactionHiveModelAdapter());
   }
 }
