@@ -1,0 +1,111 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  FLUTTER_VERSION: "3.41.9"
+  RUST_TOOLCHAIN: "stable"
+  FRB_CODEGEN_VERSION: "2.12.0"
+
+jobs:
+  flutter-check:
+    name: Flutter analyze + test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Test
+        run: flutter test
+
+  rust-check:
+    name: Rust fmt + clippy + test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: rust
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache cargo registry & target
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            rust/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('rust/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+
+      - name: Format check
+        run: cargo fmt --check
+
+      - name: Clippy
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Test
+        run: cargo test
+
+  bridge-gen-check:
+    name: flutter_rust_bridge generated up-to-date
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo bin (codegen)
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin
+          key: ${{ runner.os }}-cargo-bin-frb-${{ env.FRB_CODEGEN_VERSION }}
+
+      - name: Install flutter_rust_bridge_codegen
+        run: |
+          if [ ! -x "$HOME/.cargo/bin/flutter_rust_bridge_codegen" ]; then
+            cargo install flutter_rust_bridge_codegen --version ${{ env.FRB_CODEGEN_VERSION }} --locked
+          fi
+
+      - name: Install cargo-expand
+        run: |
+          if ! command -v cargo-expand >/dev/null 2>&1; then
+            cargo install cargo-expand --locked
+          fi
+
+      - name: Flutter pub get
+        run: flutter pub get
+
+      - name: Run codegen
+        run: ./generate.sh
+
+      - name: Verify generated files are up-to-date
+        run: git diff --exit-code
