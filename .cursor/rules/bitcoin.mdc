@@ -1,0 +1,153 @@
+---
+description: "Bitcoin / sat 換算、取引所 API、ビットコイン支払い記録の実装規約"
+alwaysApply: false
+---
+
+# Bitcoin / 取引所 API ルール（suito 固有）
+
+## 基本単位
+
+- **1 BTC = 100,000,000 sat**（satoshi）
+- **金額は最小単位（sat）の整数で保持**。浮動小数点で BTC を扱わない
+- **法定通貨も最小単位の整数で保持**：日本円 = 1 円単位（小数なし）、USD = セント単位（× 100）
+- **Money 型**を作って単位を型レベルで区別する
+
+```dart
+@freezed
+class Money with _$Money {
+  const Money._();
+  const factory Money.sat({required int amount}) = SatMoney;
+  const factory Money.jpy({required int amount}) = JpyMoney;
+  const factory Money.usd({required int cents}) = UsdMoney;
+
+  Currency get currency => when(
+        sat: (_) => Currency.sat,
+        jpy: (_) => Currency.jpy,
+        usd: (_) => Currency.usd,
+      );
+}
+```
+
+## 取引所 API の選定基準
+
+- **公開エンドポイント**（API キー不要が望ましい）
+- **レート制限が緩い**（30 req/min 以上）
+- **JSON レスポンス**
+- **HTTPS 必須**
+- **複数取引所からのフォールバック**：1 つ落ちても継続
+
+### 候補（2026 時点）
+
+| 用途 | API | 認証 | レート制限 |
+| --- | --- | --- | --- |
+| BTC/JPY | bitFlyer Public API `/v1/getticker` | 不要 | 緩い |
+| BTC/JPY | Coincheck `/api/ticker` | 不要 | 緩い |
+| BTC/USD | Coinbase `/v2/prices/BTC-USD/spot` | 不要 | 10000/h |
+| BTC/USD | Kraken `/0/public/Ticker?pair=XBTUSD` | 不要 | 緩い |
+| USD/JPY | open.er-api.com / exchangerate.host | 不要 | 緩い |
+
+**重要**: コードに採用する前に **必ず最新の公式ドキュメントで確認**する（API は変わる）。
+`@context7 bitFlyer API` で Context7 MCP に最新仕様を取りに行かせる。
+
+## レート取得の設計
+
+- **キャッシュ**: メモリ上で 60 秒間（取引所への負荷軽減）
+- **取引所ローテーション**: 複数取引所をシャッフルして 1 つに問い合わせ、失敗したら次へ
+- **ユーザー画面表示用**: 60 秒キャッシュで十分
+- **取引記録時のレート**: その瞬間に取得した値を **取引データに保存**（後で振り返ったときに当時のレートがわかる）
+
+```dart
+// 取引データには、記録時点のレートを保存する
+@freezed
+class BitcoinTransaction with _$BitcoinTransaction {
+  const factory BitcoinTransaction({
+    required TransactionId id,
+    required int satAmount,
+    required int jpyAtRecordTime, // 記録時点の円換算（再計算しない）
+    required int usdCentsAtRecordTime,
+    required int btcJpyRate, // 1 BTC = ? 円（記録時点）
+    required int btcUsdRate, // 1 BTC = ? USD cent（記録時点）
+    required DateTime recordedAt,
+    String? memo,
+  }) = _BitcoinTransaction;
+}
+```
+
+## ビットコイン支払いの記録フロー
+
+1. ユーザーが「ビットコインで支払い」を選択
+2. sat 金額を入力（or 円 / USD を入力して逆算）
+3. **その瞬間のレート**を取引所から取得（または直近キャッシュ）
+4. レート確認画面を出す（「1 BTC = X 円、Y サト = Z 円ですよ」）
+5. ユーザー確定 → Rust 側で暗号化 → Hive 保存 → Nostr 同期
+6. 取引データに **当時のレート** を保存
+
+## 表示ロジック
+
+- **記録時点の換算値**を保存しているので、過去取引を見るときは当時の円換算をそのまま表示
+- **「現在価値ではこの取引はいくら？」** という別ビューを将来追加可能（保存値 vs 現在レート）
+- **アイコン区別**: 法定通貨記録は `¥` / `$`、Bitcoin 記録は ⚡ や ₿ で区別
+
+## Bitcoin アドレス / Lightning
+
+- **MVP では「記録のみ」**：実際のオンチェーン送金や Lightning Network 連携はしない
+- **将来機能**: BIP-21 URI / Lightning invoice の読み取り → アドレス検証のみ
+- **アドレス検証**は `bitcoin` crate（Rust）に任せる。自前実装しない
+
+## 取引所 API 呼び出しの実装
+
+- **Rust 側**で `reqwest` を使い、結果を Dart へ返す
+- **HTTPS + 証明書ピン留め検討**
+- **タイムアウト**: 5 秒
+- **エラー時のフォールバック**: 次の取引所へ
+- **直近キャッシュにヒットすればネット呼ばない**
+
+```rust
+#[flutter_rust_bridge::frb]
+pub async fn fetch_btc_jpy_rate() -> Result<u64> {
+    // 60 秒キャッシュチェック
+    if let Some(cached) = check_cache("btc_jpy").await {
+        return Ok(cached);
+    }
+
+    let providers = [
+        ("bitflyer", "https://api.bitflyer.com/v1/getticker?product_code=BTC_JPY"),
+        ("coincheck", "https://coincheck.com/api/ticker"),
+    ];
+
+    for (name, url) in providers {
+        match fetch_and_parse(url).await {
+            Ok(rate) => {
+                update_cache("btc_jpy", rate).await;
+                return Ok(rate);
+            }
+            Err(e) => tracing::warn!("provider {} failed: {}", name, e),
+        }
+    }
+    anyhow::bail!("all exchange providers failed")
+}
+```
+
+## レート / 価格データのプライバシー
+
+- **送信していい**: 何も（公開エンドポイントの GET だけ）
+- **送信してはいけない**:
+  - ユーザーの取引履歴
+  - ユーザーの IP の特定可能化情報
+  - ユーザーが BTC ユーザーであることが推測される情報
+
+**設計上**: 公開価格 API はステートレスなので、複数取引所をローテすればプロファイリングを抑制できる。
+
+## テスト
+
+- **モック取引所サーバ**を立てて、レスポンスのパースをテスト
+- **タイムアウトテスト**
+- **フォールバックテスト**（最初の取引所が落ちたら次に行くか）
+- **キャッシュ TTL テスト**
+
+## 参考リソース
+
+- bitcoin crate（Rust）: <https://docs.rs/bitcoin>
+- bdk (Bitcoin Dev Kit): <https://bitcoindevkit.org/>
+- BIP-21 URI: <https://github.com/bitcoin/bips/blob/master/bip-0021.mediawiki>
+- Lightning BOLT-11 invoice: <https://github.com/lightning/bolts/blob/master/11-payment-encoding.md>

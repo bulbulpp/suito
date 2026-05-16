@@ -1,0 +1,87 @@
+# Cursor が読み込まないファイル / フォルダ
+# セキュリティ：機密情報を AI のコンテキストに絶対入れない
+
+# === 環境変数・秘密情報 ===
+.env
+.env.*
+.env.local
+*.pem
+*.p12
+*.jks
+*.keystore
+secrets/
+.secrets/
+private/
+
+# === 鍵関連 ===
+*.key
+*.crt
+**/keystore.properties
+**/key.properties
+android/key.properties
+ios/Runner/GoogleService-Info.plist
+android/app/google-services.json
+
+# === ビルド成果物（無駄なコンテキスト消費を防ぐ）===
+build/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+ios/Pods/
+ios/Flutter/Flutter.framework/
+ios/Flutter/Flutter.podspec
+android/.gradle/
+android/build/
+android/app/build/
+**/*.iml
+
+# === Rust ===
+rust/target/
+target/
+**/*.rs.bk
+Cargo.lock  # ライブラリ開発時。アプリ開発なら逆にコミットすべき
+
+# === flutter_rust_bridge 生成物 ===
+lib/bridge_generated.dart
+lib/bridge_definitions.dart
+rust/src/frb_generated.rs
+rust/src/frb_generated.io.rs
+rust/src/frb_generated.web.rs
+
+# === コード生成物（.g.dart, .freezed.dart は迷うところ）===
+# 生成物は読まなくて良いので除外（再生成可能）
+**/*.g.dart
+**/*.freezed.dart
+**/*.gr.dart
+**/*.mocks.dart
+**/*.config.dart
+
+# === OS / IDE ===
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*~
+
+# === セッション履歴・メモリ ===
+.cursor/memory.json
+
+# === ログ ===
+*.log
+logs/
+
+# === スクリーンショット・大きなバイナリ ===
+screenshots/
+*.gif
+*.mp4
+assets/raw/
+assets/cache/
+
+# === デバッグダンプ ===
+*.heap
+*.prof
+flamegraph.svg

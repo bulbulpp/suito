@@ -1,0 +1,130 @@
+---
+description: "suito のアーキテクチャ規約（Clean Architecture、レイヤー、依存方向）"
+globs: lib/**/*.dart, rust/**/*.rs
+alwaysApply: false
+---
+
+# アーキテクチャ規約
+
+## 全体構造（Feature-based Clean Architecture）
+
+```
+suito/
+├── lib/                              ← Flutter 側
+│   ├── core/                         ← 全 feature が共有する基盤
+│   │   ├── common/                   ← UseCase 基底、Failure 型、Either
+│   │   ├── crypto/                   ← Dart 側の暗号ユーティリティ薄ラッパ
+│   │   ├── logger/                   ← AppLogger
+│   │   ├── theme/                    ← 白黒テーマ定義
+│   │   ├── routing/                  ← go_router 設定（God File、1 エージェントのみ編集可）
+│   │   └── widgets/                  ← 汎用ウィジェット
+│   ├── features/
+│   │   ├── transaction/              ← 取引（収入・支出）feature
+│   │   │   ├── domain/               ← Entity, Repository IF, Error, UseCase I/O 型
+│   │   │   ├── application/          ← UseCase 実装
+│   │   │   ├── infrastructure/       ← Repository 実装、DataSource
+│   │   │   └── presentation/         ← Page, Widget, ViewModel(Provider)
+│   │   ├── category/                 ← カテゴリ feature（食費・交通費等）
+│   │   ├── calendar/                 ← カレンダー表示 feature
+│   │   ├── exchange/                 ← BTC/JPY/USD レート取得 feature
+│   │   ├── bitcoin/                  ← Bitcoin 支払い記録 feature
+│   │   ├── nostr_sync/               ← Nostr 同期 feature
+│   │   ├── settings/                 ← 設定 feature
+│   │   └── receipt_ocr/              ← レシート OCR feature（将来）
+│   ├── providers/                    ← トップレベル Provider 集約（God File）
+│   └── main.dart                     ← エントリポイント（God File）
+└── rust/
+    └── src/
+        ├── api/                      ← flutter_rust_bridge で公開する関数（FFI 境界）
+        │   ├── crypto.rs
+        │   ├── nostr.rs
+        │   └── secure_storage.rs
+        ├── crypto/                   ← AES-GCM, Argon2id 等
+        ├── nostr/                    ← Nostr プロトコル、NIP-44 暗号化
+        └── lib.rs
+```
+
+## レイヤーの依存方向（厳守）
+
+```
+Presentation  ─→  Application  ─→  Domain  ←─  Infrastructure
+                                  (innermost)
+```
+
+- **Domain（最内側）**: 他のどのレイヤーにも依存しない。純粋な型と契約のみ
+- **Application**: Domain にのみ依存
+- **Infrastructure**: Domain にのみ依存（interface を実装する）
+- **Presentation**: Application と Domain に依存
+- **依存方向に逆らうコードは即時拒否**
+
+## 各レイヤーの責務と禁止事項
+
+### Domain 層（`lib/features/<f>/domain/`）
+
+- **責務**: Entity（freezed）、Repository interface、Failure 型、UseCase の入出力型
+- **禁止**: Flutter / Riverpod / Hive / Rust bridge への直接依存
+- **命名**: `Todo`（Entity）、`TodoRepository`（interface）、`TodoFailure`（Failure）
+
+### Application 層（`lib/features/<f>/application/`）
+
+- **責務**: UseCase（1 つの UseCase = 1 つの行動）
+- **依存**: Domain のみ
+- **シグネチャ**: `class CreateTransactionUseCase { Future<Either<TransactionFailure, Transaction>> call(CreateTransactionParams params); }`
+- **禁止**: Infrastructure 実装への直接依存（必ず interface 経由）
+
+### Infrastructure 層（`lib/features/<f>/infrastructure/`）
+
+- **責務**: Repository interface の実装、外部サービスとの通信、Hive/Rust bridge 呼び出し
+- **依存**: Domain（interface を実装）
+- **禁止**: Presentation からの直接呼び出し（UseCase 経由のみ）
+
+### Presentation 層（`lib/features/<f>/presentation/`）
+
+- **責務**: 画面、ウィジェット、Provider（状態管理）
+- **依存**: Application（UseCase）と Domain
+- **禁止**:
+  - ビジネスロジックを書かない（UseCase に逃がす）
+  - Infrastructure を直接呼ばない
+  - `ConsumerWidget` を使わない → `Consumer(builder: ...)` でラップ
+
+## Rust 側の役割（`rust/src/`）
+
+- **暗号化・復号化（AES-GCM, Argon2id）**
+- **Nostr プロトコル実装**（イベント署名、NIP-44）
+- **秘密鍵管理（メモリ上のゼロクリア）**
+- **エラー**: `anyhow::Result` で返し、Flutter 側で適切に変換
+
+## Flutter ⇄ Rust 境界
+
+- **flutter_rust_bridge** の自動生成コード（`bridge_generated.dart`）は Leaf PR に含めない
+- **生成**: `flutter_rust_bridge_codegen generate` を `generate.sh` でラップ
+- **FFI 呼び出しは必ず `try-catch`**
+- **型変換は明示的に**（Dart の `Uint8List` ⇄ Rust の `Vec<u8>` 等）
+
+## Riverpod の使い方
+
+- **状態は Provider 側で管理**。UI は `StatelessWidget` を基本
+- **`ConsumerWidget` 禁止**。`Consumer(builder: ...)` で局所的にラップ
+- **`AsyncValue` の状態遷移を理解**：`AsyncLoading → AsyncData → AsyncLoading → AsyncData` を意識
+- **楽観的 UI 更新**：state を即更新してから、失敗時はロールバック
+- **`@riverpod` アノテーション + コード生成**を使う（`riverpod_generator`）
+
+## Hive の使い方
+
+- **Box 名は feature ごとにユニークに**：`transactions_box`、`categories_box`
+- **TypeAdapter は freezed の Entity から自動生成**しない（freezed と相性悪い）→ DTO クラスを別途定義
+- **暗号化 Box** で保存（`HiveAesCipher` + Rust から取得した鍵）
+
+## God File（複数エージェントによる同時編集禁止）
+
+| ファイル | 役割 |
+| --- | --- |
+| `lib/main.dart` | エントリポイント |
+| `lib/core/routing/app_router.dart` | go_router 定義 |
+| `lib/providers/app_providers.dart` | トップレベル Provider 集約 |
+| `lib/features/*/<feature>_providers.dart` | feature 内 Provider 集約 |
+| `rust/src/lib.rs` | Rust ライブラリエントリ |
+| `pubspec.yaml` | Flutter 依存 |
+| `Cargo.toml`（ワークスペースルート） | Rust 依存 |
+
+**これらは統合フェーズで 1 エージェントが直列に編集する。**

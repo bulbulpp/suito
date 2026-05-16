@@ -1,0 +1,145 @@
+---
+description: "Rust 側のコーディング規約と flutter_rust_bridge 連携の原則"
+globs: rust/**/*.rs, rust/Cargo.toml
+alwaysApply: false
+---
+
+# Rust コーディング規約
+
+## Rust 側の責務
+
+- **暗号化・復号化**（AES-256-GCM, Argon2id）
+- **Nostr プロトコル実装**（イベント生成、署名、NIP-44 暗号化）
+- **秘密鍵管理とゼロクリア**
+- **その他、機密処理 / パフォーマンスクリティカルなロジック**
+
+## Rust 側に書かないもの
+
+- UI ロジック
+- 状態管理
+- ローカルストレージ（Hive は Dart 側）
+- 単純な CRUD（Dart 側 Repository で十分）
+
+## エラーハンドリング
+
+- **戻り値は `anyhow::Result<T>`**。FFI 境界で Dart 側のエラー型に変換
+- **`?` 演算子**で短絡
+- **`.unwrap()` / `.expect()` は本番コードで禁止**（テストのみ可）
+- **`panic!()` は致命的状態のみ**。FFI 境界で panic させない（必ず `Result` で返す）
+
+```rust
+use anyhow::{Context, Result};
+
+#[flutter_rust_bridge::frb]
+pub fn encrypt_payload(plaintext: Vec<u8>, key: Vec<u8>) -> Result<Vec<u8>> {
+    let cipher = Aes256Gcm::new_from_slice(&key)
+        .context("invalid key length")?;
+    let nonce = generate_nonce();
+    let ciphertext = cipher
+        .encrypt(&nonce, plaintext.as_slice())
+        .context("AES-GCM encryption failed")?;
+    Ok([nonce.as_slice(), ciphertext.as_slice()].concat())
+}
+```
+
+## 秘密情報のメモリ管理
+
+- **`Zeroize` トレイト**を使う（`zeroize` crate）
+- **`Drop` 実装で必ずゼロ化**
+- **`String` よりも `secrecy::Secret<String>`**
+
+```rust
+use zeroize::{Zeroize, ZeroizeOnDrop};
+
+#[derive(ZeroizeOnDrop)]
+struct PrivateKey([u8; 32]);
+
+impl PrivateKey {
+    fn from_bytes(bytes: [u8; 32]) -> Self {
+        Self(bytes)
+    }
+}
+// スコープを抜けると自動でゼロ化
+```
+
+## 乱数
+
+- **暗号用途は `getrandom` crate** or `rand::rngs::OsRng` のみ
+- **`rand::thread_rng()` を暗号用途に使わない**
+
+## 依存ライブラリ（推奨）
+
+| 用途 | crate |
+| --- | --- |
+| 暗号（AEAD） | `aes-gcm`、`chacha20poly1305` |
+| 鍵導出 | `argon2` |
+| 乱数 | `getrandom`、`rand_core` |
+| Nostr | `nostr-sdk`（最新版） |
+| Bitcoin | `bitcoin`、`bdk`（Bitcoin Dev Kit、必要なら） |
+| エラー | `anyhow`、`thiserror` |
+| ゼロ化 | `zeroize`、`secrecy` |
+| シリアライズ | `serde`、`serde_json` |
+| HTTP | `reqwest`（rustls 機能） |
+| 非同期 | `tokio` |
+
+## flutter_rust_bridge
+
+- **公開関数は `rust/src/api/` 配下にまとめる**
+- **`#[flutter_rust_bridge::frb]` を付ける**
+- **戻り値の型は `Result<T, E>`** で Dart 側の例外として伝播させる
+- **型変換**:
+  - Rust `Vec<u8>` ⇄ Dart `Uint8List`
+  - Rust `String` ⇄ Dart `String`
+  - Rust `Option<T>` ⇄ Dart `T?`
+  - Rust の struct は **flat な serde 可能型**にする（複雑なネストは避ける）
+- **生成コマンド**: `flutter_rust_bridge_codegen generate`（`generate.sh` でラップ）
+
+## ログ
+
+- **本番ビルドで `println!` / `dbg!` を残さない**
+- **`tracing` crate** を使う場合は、機密情報をフィールドに入れない
+- **デバッグログ**は `#[cfg(debug_assertions)]` で囲む
+
+```rust
+#[cfg(debug_assertions)]
+{
+    eprintln!("DEBUG: state = {:?}", state);
+}
+```
+
+## テスト
+
+- **ユニットテスト**: 各モジュールの `#[cfg(test)] mod tests { ... }`
+- **暗号関連は既知ベクトルでテスト**（RFC 7539 等の test vector）
+- **`cargo test` でグリーンになることが PR の条件**
+- **CI で `cargo clippy -- -D warnings` を必須化**
+
+## Cargo.toml
+
+- **`edition = "2021"`**
+- **`[profile.release]`**:
+  ```toml
+  [profile.release]
+  opt-level = 3
+  lto = true
+  codegen-units = 1
+  strip = true
+  panic = "abort"
+  ```
+- **依存のバージョン固定**（`^x.y.z` ではなく `=x.y.z` まで指定するのは推奨だが、運用負荷とのトレードオフ）
+
+## clippy 必須
+
+- `cargo clippy --all-targets -- -D warnings` が通ること
+- `cargo fmt --check` が通ること
+- 主要 lint:
+  - `clippy::unwrap_used`（unwrap 禁止）
+  - `clippy::expect_used`（expect 禁止、テスト除く）
+  - `clippy::panic`（panic 禁止）
+
+## セキュリティ
+
+- **`unsafe` ブロック禁止**（暗号 crate の内部除く）
+- **`cargo audit` を CI で**
+- **依存追加前にメンテナンス状況を確認**
+- **Bitcoin / Nostr 関連は実績ある crate のみ**：`bitcoin`, `bdk`, `nostr-sdk`

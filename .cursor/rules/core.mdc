@@ -1,0 +1,90 @@
+---
+description: "suito プロジェクトの常時適用ルール（プロジェクト概要・Leaf Node 5 原則・絶対禁止事項）"
+alwaysApply: true
+---
+
+# suito — プロジェクト常時ルール
+
+## プロジェクト概要
+
+- **名称**: suito（家計簿アプリ）
+- **目的**: 法定通貨（JPY/USD）と Bitcoin（sat）の両方で収支を記録できる、セキュリティ／プライバシー特化の家計簿
+- **配布**: Zapstore（Nostr ネイティブのアプリストア）
+- **技術スタック**: Flutter（UI）+ Rust（暗号・Nostr・機密処理）+ flutter_rust_bridge（FFI）
+- **アーキテクチャ**: Feature-based Clean Architecture（meiso と同様）
+- **状態管理**: Riverpod
+- **ローカル保存**: Hive（暗号化付き）
+- **参考実装**: <https://github.com/higedamc/meiso>
+
+## 開発者プロファイル
+
+ユーザーは **初めてアプリ開発をする**。専門用語を出すときは必ず短く意味を補足する。
+迷ったら、**シンプルで読みやすい方**を選び、過度な抽象化を避ける。
+
+## このプロジェクトの哲学（meiso 由来）
+
+1. **シンプルさ**: 複雑な実装より、シンプルで読みやすいコード。必要になってから拡張する
+2. **プライバシー**: ユーザーデータは完全に暗号化。秘密鍵は **Rust 側で Argon2id + AES-256-GCM**
+3. **UX 最優先**: UI が更新されなければ意味がない。ローディングが永遠に続くのは最悪。ネットワークエラーでもアプリは使える（楽観的 UI 更新）
+
+## Leaf Node 5 原則（AI 並列開発の核）
+
+> 並列度の理論的上限 = 独立した leaf node の数。**Leaf Node 最大化が AI 並列開発 ROI の決定要因**。
+
+1. **契約を先に決める**: Entity / Repository interface / Error 型 / UseCase I/O を最初に確定してコミットする。これが並列作業の土台
+2. **新規ファイル作成を優先**: 既存ファイル編集より新規ファイル作成の方が安全。リファクタも「新ファイルに抽出 → 古いファイルから呼ぶ」順
+3. **God File には 1 エージェントのみ**: ルータ / DI / プロバイダツリーは並列化しない
+4. **Feature 境界を尊重**: `lib/features/<feature>/` 配下は他 feature と独立。共有は `lib/core/` に抽出
+5. **統合は内側から**: マージ順は Domain → Application → Infrastructure → Presentation
+
+## Leaf Node 成立の 3 条件（全て必須）
+
+- **ファイル直交性**: 並行作業同士が同一ファイルを編集しない
+- **状態独立性**: 共有ミュータブルな状態（Provider / DB / cache）を操作しない
+- **契約先行性**: 依存するインターフェースが事前確定している
+
+## 絶対禁止事項（違反したら即停止して人間に確認）
+
+- **秘密鍵・トークン・API キーをコード／コミット／ログに含めること**
+- **`.env`、`*.keystore`、`secrets/**`、`*.pem` の読み取り**
+- **`main` ブランチへの直接コミット**
+- **複数の関心事を 1 PR / 1 コミットに混ぜること**
+- **`dist/`、`build/`、`*.g.dart`、生成済み `bridge_generated.dart` を Leaf PR に含めること**
+- **God File（`main.dart`、`app_router.dart`、`providers/*.dart`、`index.dart` バレル）の複数 Leaf 同時編集**
+- **`.dart` の `ConsumerWidget` 使用**（Riverpod は `Consumer(builder: ...)` に統一）
+- **HTTP プレーンテキストでの本番通信**（必ず HTTPS / Nostr リレーは wss://）
+- **デバッグ用 `print!` / `println!` / `debugPrint` をコミット**（必ず `AppLogger` 経由）
+
+## コミットメッセージ規約
+
+```
+<type>: 簡潔なタイトル（50 文字以内）
+
+Root Cause:
+  問題の根本原因（fix の場合）／なぜ必要か（feat の場合）
+
+Problem / Goal:
+  具体的に何を解決／達成するか
+
+Solution:
+  どう解決したか
+
+Changes:
+  - 変更点 1
+  - 変更点 2
+
+Impact:
+  この変更が与える影響
+```
+
+`<type>`: `feat`（新機能）/ `fix`（バグ修正）/ `refactor`（挙動変更なし）/ `chore`（雑務）/ `docs`（ドキュメント）/ `test`（テスト）
+
+**1 コミット = 1 つの問題解決。無関係な変更を混ぜない。**
+
+## 困ったら参照
+
+- `docs/ARCHITECTURE.md` — レイヤー構成と依存方向
+- `docs/SECURITY_PRIVACY.md` — 脅威モデルと暗号化方針
+- `docs/FEATURES.md` — 機能仕様
+- `docs/LEAF_NODE_STRATEGY.md` — Phase 別の分解計画
+- `@leaf-node` ルール — Leaf 分解作業時に手動参照

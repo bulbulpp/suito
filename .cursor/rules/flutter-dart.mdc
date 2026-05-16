@@ -1,0 +1,183 @@
+---
+description: "Flutter / Dart 固有のコーディング規約"
+globs: lib/**/*.dart, test/**/*.dart
+alwaysApply: false
+---
+
+# Flutter / Dart コーディング規約
+
+## 命名規則
+
+- **ファイル名**: `snake_case.dart`
+- **クラス・型**: `UpperCamelCase`
+- **変数・関数・名前付き引数**: `lowerCamelCase`
+- **定数（const）**: `lowerCamelCase`（古い `SCREAMING_SNAKE_CASE` は使わない）
+- **プライベート**: `_` プレフィックス
+- **ファイル名と主要クラス名は一致させる**（例: `transaction.dart` → `class Transaction`）
+
+## immutability
+
+- **Entity / Model は必ず `freezed`** を使う
+- **`copyWith`、`==`、`hashCode` は freezed が生成**するので手書きしない
+- **JSON は `json_serializable`** で自動生成
+
+```dart
+@freezed
+class Transaction with _$Transaction {
+  const factory Transaction({
+    required TransactionId id,
+    required Money amount,
+    required Currency currency,
+    required CategoryId categoryId,
+    required DateTime occurredAt,
+    String? memo,
+  }) = _Transaction;
+
+  factory Transaction.fromJson(Map<String, dynamic> json) =>
+      _$TransactionFromJson(json);
+}
+```
+
+## 型安全
+
+- **`dynamic` 禁止**。やむを得ない場合は `Object?` + 型ガード
+- **`!`（Null assertion）はできる限り避ける**。`if (x != null)` か `?? デフォルト値`
+- **Value Object を使う**：`TransactionId`、`Money` 等を素の `String` / `int` で持たない
+
+```dart
+@freezed
+class Money with _$Money {
+  const Money._();
+  const factory Money({
+    required int amountMinorUnit, // 円なら 1 円 = 1、sat なら 1 sat = 1
+    required Currency currency,
+  }) = _Money;
+
+  bool get isPositive => amountMinorUnit > 0;
+}
+```
+
+## エラーハンドリング
+
+- **`Either<Failure, T>` パターン**：`dartz` or `fpdart`
+- **UseCase は必ず `Future<Either<XxxFailure, T>>` を返す**
+- **try-catch は Infrastructure 層のみ**。Application/Domain は `Either` で表現
+- **例外を投げない設計**（FFI 呼び出し除く）
+
+```dart
+abstract class TransactionRepository {
+  Future<Either<TransactionFailure, Transaction>> create(Transaction t);
+  Future<Either<TransactionFailure, List<Transaction>>> findByDateRange(
+    DateTime from,
+    DateTime to,
+  );
+  Future<Either<TransactionFailure, Unit>> delete(TransactionId id);
+}
+
+@freezed
+class TransactionFailure with _$TransactionFailure {
+  const factory TransactionFailure.notFound() = _NotFound;
+  const factory TransactionFailure.storageError(String message) = _StorageError;
+  const factory TransactionFailure.invalidAmount() = _InvalidAmount;
+}
+```
+
+## Riverpod
+
+- **`@riverpod` アノテーション + `riverpod_generator`** で書く
+- **状態管理は Provider 側**。UI は `StatelessWidget` + `Consumer`
+- **`ConsumerWidget` は使わない**
+
+```dart
+@riverpod
+class TransactionList extends _$TransactionList {
+  @override
+  FutureOr<List<Transaction>> build() async {
+    final usecase = ref.read(getTransactionsUseCaseProvider);
+    final result = await usecase(const GetTransactionsParams());
+    return result.fold(
+      (failure) => throw failure, // Riverpod の AsyncError へ
+      (list) => list,
+    );
+  }
+
+  Future<void> add(Transaction t) async {
+    state = const AsyncLoading();
+    final usecase = ref.read(createTransactionUseCaseProvider);
+    final result = await usecase(CreateTransactionParams(transaction: t));
+    state = await AsyncValue.guard(() async {
+      return result.fold(
+        (failure) => throw failure,
+        (created) => [...?state.value, created],
+      );
+    });
+  }
+}
+```
+
+## ウィジェット
+
+- **`StatelessWidget` ベース**。state を持つ必要があるときだけ `Consumer` で `ref.watch`
+- **ウィジェットを 200 行以上にしない**。超えたら分割
+- **`build` メソッド内で重い計算をしない**（`memoize` か Provider に逃がす）
+- **テーマは `Theme.of(context)` から取る**。色のハードコード禁止
+
+## テスト
+
+- **テストファイルは `test/` 配下に同じ階層**で配置
+- **UseCase は必ずテストを書く**
+- **モックは `mocktail`** を使う（`mockito` ではない）
+- **ファイル命名**: `<対象>_test.dart`
+
+```dart
+void main() {
+  group('CreateTransactionUseCase', () {
+    late MockTransactionRepository mockRepo;
+    late CreateTransactionUseCase usecase;
+
+    setUp(() {
+      mockRepo = MockTransactionRepository();
+      usecase = CreateTransactionUseCase(mockRepo);
+    });
+
+    test('returns Right(Transaction) on successful creation', () async {
+      // ...
+    });
+  });
+}
+```
+
+## バレルファイル（`index.dart`）の扱い
+
+- **バレルファイルは作らない**。各ファイルを直接 import する
+- 既存にあっても、新規ファイル追加時に「ついでに export を追加」しない
+- どうしても必要なら **統合フェーズで 1 エージェントが一括で更新**
+
+## コード生成
+
+- **`build_runner` を使う**：
+  ```bash
+  fvm dart run build_runner build --delete-conflicting-outputs
+  ```
+- **生成物（`*.g.dart`, `*.freezed.dart`）はリポジトリにコミット**する（meiso と同様）
+- **生成物の手動編集禁止**
+
+## パフォーマンス
+
+- **リスト系は `ListView.builder`** を使う（`ListView( children: ... )` 禁止、量が多い場合）
+- **画像は `cached_network_image`** でキャッシュ
+- **不要な `setState` / `notifyListeners` を避ける**
+- **Provider の依存を最小化**：`ref.watch` するときは必要な値だけ
+
+## ローカリゼーション
+
+- **`l10n.yaml` + `arb` ファイル**を使う（meiso 参考）
+- **デフォルトは日本語**、英語も用意
+- **ハードコードされた日本語文字列禁止**（UI 全てに `AppLocalizations.of(context).xxx` を使う）
+
+## 依存追加時のチェック
+
+- メンテナンスされているか（最終 release が 6 ヶ月以内）
+- pub.dev のスコア / Like 数
+- 同等機能の老舗パッケージがないか
+- ネイティブ依存（Android/iOS 固有）が増えすぎないか

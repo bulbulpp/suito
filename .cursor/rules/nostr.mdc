@@ -1,0 +1,129 @@
+---
+description: "Nostr プロトコル関連の実装規約。Nostr イベント、リレー通信、NIP-44 暗号化を扱うときに参照する"
+alwaysApply: false
+---
+
+# Nostr 実装ルール（suito 固有）
+
+## suito での Nostr の役割
+
+家計データを **複数端末で同期する**ためのトランスポート層。
+中央サーバを置かず、ユーザーが選んだ Nostr リレー群に **暗号化済みデータ**を投げて取り出す。
+
+**Nostr に求めないこと**:
+- 認証（ユーザーは Nostr 鍵 = 自分の鍵を持つ）
+- 公開コンテンツ（家計データは絶対に公開しない）
+- リレー側のフィルタリング機能（暗号化済みなので意味がない）
+
+## 採用 NIP
+
+- **NIP-01**: 基本イベント仕様
+- **NIP-19**: bech32 エンコーディング（`npub`, `nsec` 等）
+- **NIP-44 v2**: E2E 暗号化（**NIP-04 は脆弱なので使わない**）
+- **NIP-51（カスタム）**: 任意のリストに家計データを格納（meiso 流の `Kind 30001` を参考に、suito 用の Kind を選定）
+
+## イベント Kind の選定方針
+
+- **Replaceable**: `30000-39999` 範囲
+- **Application-specific data**: `Kind 30078`（meiso が採用）でも可。または `Kind 30100`（suito 専用）として独自に切る
+- **`d` タグ で決定的 ID**：suito の取引 ID をハッシュして `d` タグに入れる
+- **重複防止**: 同じ `d` タグ → 同じイベント ID → リレー側で上書き
+
+## イベント生成のフロー（Rust 側）
+
+1. Dart から取引データ（JSON）を受け取る
+2. Rust で JSON を serialize
+3. NIP-44 v2 で **自分宛て** に暗号化（送信者 = 受信者 = 自分）
+4. Nostr イベントを構築（`kind`、`tags`、`content = 暗号文`）
+5. 秘密鍵で署名（Schnorr / secp256k1）
+6. リレーに送信
+
+```rust
+use nostr_sdk::prelude::*;
+
+#[flutter_rust_bridge::frb]
+pub async fn create_encrypted_transaction_event(
+    transaction_json: String,
+    secret_key_hex: String,
+    transaction_id: String,
+) -> Result<String> {
+    let keys = Keys::parse(&secret_key_hex)?;
+    let encrypted = nip44::encrypt(
+        keys.secret_key()?,
+        &keys.public_key(),
+        &transaction_json,
+        nip44::Version::V2,
+    )?;
+    let event = EventBuilder::new(
+        Kind::ParameterizedReplaceable(30100),
+        encrypted,
+        [Tag::Identifier(transaction_id)],
+    )
+    .to_event(&keys)?;
+    Ok(event.as_json())
+}
+```
+
+## リレー同期の原則
+
+- **タイムアウトは 10 秒**
+- **同期失敗時はローカルデータを保持**してアプリは動作継続
+- **ネットワークエラー時もアプリは使用可能**
+- **楽観的 UI 更新**：同期前に UI を更新、失敗時にロールバック
+- **複数リレーへ並列送信**：1 つでも成功すれば OK
+- **取得時は OR 集合**：複数リレーから取得して重複排除
+
+## デフォルトリレー候補
+
+- `wss://relay.damus.io`
+- `wss://relay.nostr.band`
+- `wss://nos.lol`
+- `wss://relay.snort.social`
+- ユーザーが追加・削除可能
+
+## 鍵管理
+
+- **秘密鍵（nsec）は OS のセキュアストレージにのみ保存**
+- **メモリ上のライフタイムは最小化**（Zeroize）
+- **画面表示は明示操作 + スクリーンショット禁止**
+- **エクスポート**: ユーザーが明示的に要求した時のみ、QR コード or テキストで表示
+- **Amber（Android 専用 NIP-55 署名アプリ）対応**は MVP 後に検討（meiso 参考）
+
+## 公開鍵の扱い
+
+- **`npub` 形式（bech32）でユーザーに表示**
+- **内部処理は hex の `PublicKey`**
+- **変換は `nostr-sdk` の `XOnlyPublicKey::from_bech32`**
+
+## ユーザー初期化フロー
+
+1. アプリ起動時、セキュアストレージに秘密鍵があるか確認
+2. なければ:
+   - **新規生成**（推奨デフォルト）：CSPRNG で秘密鍵生成 → セキュアストレージに保存
+   - **インポート**：ユーザーが nsec を貼り付け → 検証 → 保存
+3. 公開鍵を Dart 側にも保持（メモリ上）
+
+## データ削除
+
+- **ローカル削除 + Nostr 上の削除イベント発行**（NIP-09 `Kind 5` で削除要求）
+- **Replaceable イベントは上書きで削除を表現**（content を空にする等の方法は選定中）
+
+## エラーハンドリング
+
+- **リレー接続失敗**: ローカルで継続
+- **署名失敗**: 致命的、ユーザーに通知
+- **復号化失敗**: 不正なイベントとしてスキップ、ログには記録
+- **タイムスタンプ齟齬**: クライアント時刻を信頼。リレー側のタイムスタンプは参考程度
+
+## テスト
+
+- **NIP-44 v2 のテストベクトル**（公式テストベクトル参照）で暗号化・復号化のテスト
+- **イベント署名・検証のラウンドトリップテスト**
+- **タイムアウトのテスト**（モックリレー）
+
+## 参考リソース
+
+- NIPs リポジトリ: <https://github.com/nostr-protocol/nips>
+- NIP-44 v2 spec: <https://github.com/nostr-protocol/nips/blob/master/44.md>
+- nostr-sdk (Rust): <https://github.com/rust-nostr/nostr>
+- meiso の Nostr 実装: <https://github.com/higedamc/meiso/tree/main/rust/src>

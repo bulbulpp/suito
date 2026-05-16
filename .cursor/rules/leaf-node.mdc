@@ -1,0 +1,158 @@
+---
+description: "Leaf Node 戦略 — タスクを並列化可能な独立単位に分解するときの手順書。@leaf-node で手動参照"
+alwaysApply: false
+---
+
+# Leaf Node 分解 — 手順書
+
+## いつこのルールを呼ぶか
+
+- 新機能を実装する前
+- 大きなリファクタリングをする前
+- 「複数のことを同時にやりたい」と感じたとき
+- AI に「これ並列でやれる？」と聞きたいとき
+
+呼び出し方: チャットで `@leaf-node この機能を Leaf に分解して` のように指定。
+
+## Leaf Node の定義
+
+**他の並行作業単位と依存関係を持たない、完全に独立した実行タスク**。
+
+並列度の上限 = 独立 Leaf の数。**Leaf 最大化が AI 並列開発 ROI の決定要因**。
+
+## 成立の 3 条件（全て必須）
+
+1. **ファイル直交性**: 並行作業同士が同一ファイルを編集しない
+2. **状態独立性**: 共有ミュータブルな状態を操作しない
+3. **契約先行性**: 依存するインターフェースが事前確定している
+
+## 分解の標準フロー（suito 用にカスタマイズ済み）
+
+### Phase 0: 契約定義（Coordinator）
+
+**ここは 1 エージェントが直列に実行。並列化しない。**
+
+確定すべき成果物（**すべて新規ファイル**）:
+
+- `lib/features/<feature>/domain/entities/*.dart` — freezed Entity
+- `lib/features/<feature>/domain/repositories/<feature>_repository.dart` — abstract class
+- `lib/features/<feature>/domain/failures/<feature>_failure.dart` — freezed sealed
+- `lib/features/<feature>/domain/usecases/<usecase>_io.dart` — Params / Result 型
+
+**Phase 0 のコミット後**、Phase 1 が並列で着手できる。
+
+### Phase 1: Application + Infrastructure（並列）
+
+Leaf 例:
+
+| Leaf | ブランチ | 編集ファイル |
+| --- | --- | --- |
+| A | `leaf/<feature>-app-create-usecase` | `lib/features/<f>/application/usecases/create_*.dart` |
+| B | `leaf/<feature>-app-list-usecase` | `lib/features/<f>/application/usecases/list_*.dart` |
+| C | `leaf/<feature>-infra-hive-repo` | `lib/features/<f>/infrastructure/repositories/hive_*_repository.dart` |
+| D | `leaf/<feature>-infra-rust-bridge` | `rust/src/api/<feature>.rs` + 関連 |
+| E | `leaf/<feature>-app-test` | `test/features/<f>/application/**` |
+
+**ポイント**:
+- 各 Leaf は **新規ファイルのみ作成**。既存ファイルは触らない
+- 依存は Phase 0 でコミットされた **契約 import のみ**
+
+### Phase 2: Presentation（並列）
+
+| Leaf | ブランチ | 編集ファイル |
+| --- | --- | --- |
+| F | `leaf/<feature>-pres-list-page` | `lib/features/<f>/presentation/pages/<f>_list_page.dart` |
+| G | `leaf/<feature>-pres-edit-page` | `lib/features/<f>/presentation/pages/<f>_edit_page.dart` |
+| H | `leaf/<feature>-pres-widgets` | `lib/features/<f>/presentation/widgets/*.dart` |
+| I | `leaf/<feature>-pres-provider` | `lib/features/<f>/presentation/providers/<f>_provider.dart` |
+| J | `leaf/<feature>-pres-test` | `test/features/<f>/presentation/**` |
+
+### Phase 3: 統合（1 エージェント直列）
+
+**God File への編集はここで実施**。並列化しない。
+
+- `lib/core/routing/app_router.dart` にルート追加
+- `lib/providers/app_providers.dart` に Provider 配線
+- `pubspec.yaml` への依存追加（必要なら）
+- 統合テスト実行
+
+## git worktree によるファイルシステム分離
+
+```bash
+# Phase 1 の Leaf を物理的に別ディレクトリで作業
+git worktree add ../suito-wt/leaf-app-create   -b leaf/transaction-app-create-usecase
+git worktree add ../suito-wt/leaf-infra-hive   -b leaf/transaction-infra-hive-repo
+git worktree add ../suito-wt/leaf-infra-rust   -b leaf/transaction-infra-rust-bridge
+
+# 各 worktree で Cursor を開く（別ウィンドウ）
+cursor ../suito-wt/leaf-app-create
+cursor ../suito-wt/leaf-infra-hive
+cursor ../suito-wt/leaf-infra-rust
+```
+
+## Leaf 設計チェックリスト
+
+### 分割前
+
+- [ ] タスク全体の依存関係グラフを描いた
+- [ ] 共有される Entity / Model は Phase 0 で確定済み
+- [ ] Repository interface は Phase 0 で確定済み
+- [ ] Error / Failure 型は Phase 0 で確定済み
+- [ ] 各 Leaf が編集するファイル一覧を列挙した
+- [ ] ファイル一覧に重複はない（重複があれば Leaf ではない）
+
+### 各 Leaf
+
+- [ ] この Leaf は他の並行作業のファイルに触れない
+- [ ] この Leaf は共有ミュータブル状態を操作しない
+- [ ] この Leaf は単体でビルドできる（Rust も Dart も）
+- [ ] この Leaf は単体でテストできる
+- [ ] この Leaf の完了条件は明確（PR 作成・テスト通過）
+
+### 統合
+
+- [ ] マージ順序は内側から（Domain → App → Infra → Pres）
+- [ ] 各マージ後にビルド確認
+- [ ] DI 設定は全レイヤーマージ後
+- [ ] 統合テストを最後に実行
+
+## アンチパターン（即時拒否）
+
+1. **God File への複数 Leaf 同時編集**：`main.dart`, `app_router.dart`, `providers/*.dart`, バレル
+2. **暗黙の依存関係を持つタスクの並列化**：Entity 拡張と JSON パースを別 Leaf に
+3. **共有状態の並行操作**：同じ Provider / Hive Box を複数 Leaf が更新
+4. **生成物（`.g.dart`, `.freezed.dart`, `bridge_generated.dart`）を Leaf PR に含める**
+
+## 例: 新機能「カレンダー画面」の Leaf 分解
+
+```
+Phase 0 (Coordinator):
+  - lib/features/calendar/domain/entities/daily_summary.dart (Entity)
+  - lib/features/calendar/domain/repositories/calendar_repository.dart (IF)
+  - lib/features/calendar/domain/failures/calendar_failure.dart
+  - lib/features/calendar/domain/usecases/get_monthly_summary_io.dart
+
+Phase 1 (並列):
+  Leaf A: lib/features/calendar/application/usecases/get_monthly_summary_usecase.dart
+  Leaf B: lib/features/calendar/infrastructure/repositories/calendar_repository_impl.dart
+          (transaction repository に依存。Phase 0 で確定済みの transaction IF を import)
+  Leaf C: test/features/calendar/application/get_monthly_summary_test.dart
+
+Phase 2 (並列):
+  Leaf D: lib/features/calendar/presentation/pages/calendar_page.dart
+  Leaf E: lib/features/calendar/presentation/widgets/calendar_cell.dart
+  Leaf F: lib/features/calendar/presentation/widgets/monthly_summary_card.dart
+  Leaf G: lib/features/calendar/presentation/providers/calendar_provider.dart
+
+Phase 3 (1 エージェント直列):
+  - lib/core/routing/app_router.dart に /calendar ルート追加
+  - lib/providers/app_providers.dart に calendarRepositoryProvider 配線
+```
+
+## 5 原則（最後にもう一度）
+
+1. **契約を先に決める**
+2. **新規ファイル作成を優先**
+3. **God File には 1 エージェントのみ**
+4. **Feature 境界を尊重**
+5. **統合は内側から**
