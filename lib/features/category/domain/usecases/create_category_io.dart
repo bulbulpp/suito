@@ -11,7 +11,7 @@ part 'create_category_io.g.dart';
 /// id / colorHex / sortOrder は UseCase + Infrastructure 側で補完する設計。
 /// UI からは「名前・アイコン・種別」だけ受け取れば足りる。
 @freezed
-class CreateCategoryParams with _$CreateCategoryParams {
+abstract class CreateCategoryParams with _$CreateCategoryParams {
   const factory CreateCategoryParams({
     required String name,
     required String icon,
@@ -25,7 +25,7 @@ class CreateCategoryParams with _$CreateCategoryParams {
 
 /// `CreateCategoryUseCase` の成功時の出力。
 @freezed
-class CreateCategoryResult with _$CreateCategoryResult {
+abstract class CreateCategoryResult with _$CreateCategoryResult {
   const factory CreateCategoryResult({
     required Category category,
   }) = _CreateCategoryResult;

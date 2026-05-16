@@ -14,7 +14,7 @@ part 'relay_info.g.dart';
 /// - [lastSyncAt]: 最後に同期成功した時刻（成功事例があれば非 null）。
 /// - [displayName]: ユーザー任意のニックネーム。null = URL を表示。
 @freezed
-class RelayInfo with _$RelayInfo {
+abstract class RelayInfo with _$RelayInfo {
   const RelayInfo._();
 
   const factory RelayInfo({

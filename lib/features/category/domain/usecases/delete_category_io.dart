@@ -11,7 +11,7 @@ part 'delete_category_io.g.dart';
 /// 紐づく取引が残っている場合は失敗を返す（カテゴリだけ消えて取引が
 /// 孤児になる事故を防ぐ）。
 @freezed
-class DeleteCategoryParams with _$DeleteCategoryParams {
+abstract class DeleteCategoryParams with _$DeleteCategoryParams {
   const factory DeleteCategoryParams({
     required CategoryId id,
   }) = _DeleteCategoryParams;
@@ -22,7 +22,7 @@ class DeleteCategoryParams with _$DeleteCategoryParams {
 
 /// `DeleteCategoryUseCase` の成功時の出力。
 @freezed
-class DeleteCategoryResult with _$DeleteCategoryResult {
+abstract class DeleteCategoryResult with _$DeleteCategoryResult {
   const factory DeleteCategoryResult({
     required CategoryId deletedId,
   }) = _DeleteCategoryResult;

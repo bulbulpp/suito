@@ -20,7 +20,7 @@ part 'bitcoin_record_snapshot.g.dart';
 /// - [btcUsdCentRate]: 記録時点の BTC/USD レート（1 BTC = `btcUsdCentRate` cents）。
 /// - [recordedAt]: スナップショットを撮った時刻（UTC 想定）。
 @freezed
-class BitcoinRecordSnapshot with _$BitcoinRecordSnapshot {
+abstract class BitcoinRecordSnapshot with _$BitcoinRecordSnapshot {
   const BitcoinRecordSnapshot._();
 
   const factory BitcoinRecordSnapshot({

@@ -7,7 +7,7 @@ part 'get_daily_summary_io.g.dart';
 
 /// `GetDailySummaryUseCase` の入力。
 @freezed
-class GetDailySummaryParams with _$GetDailySummaryParams {
+abstract class GetDailySummaryParams with _$GetDailySummaryParams {
   const factory GetDailySummaryParams({
     required DateTime date,
   }) = _GetDailySummaryParams;
@@ -18,7 +18,7 @@ class GetDailySummaryParams with _$GetDailySummaryParams {
 
 /// `GetDailySummaryUseCase` の成功時の出力。
 @freezed
-class GetDailySummaryResult with _$GetDailySummaryResult {
+abstract class GetDailySummaryResult with _$GetDailySummaryResult {
   const factory GetDailySummaryResult({
     required DailySummary summary,
   }) = _GetDailySummaryResult;

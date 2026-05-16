@@ -7,7 +7,7 @@ part 'delete_transaction_io.g.dart';
 
 /// `DeleteTransactionUseCase` の入力。物理削除（論理削除は MVP では扱わない）。
 @freezed
-class DeleteTransactionParams with _$DeleteTransactionParams {
+abstract class DeleteTransactionParams with _$DeleteTransactionParams {
   const factory DeleteTransactionParams({
     required TransactionId id,
   }) = _DeleteTransactionParams;
@@ -20,7 +20,7 @@ class DeleteTransactionParams with _$DeleteTransactionParams {
 ///
 /// 削除済み ID を返す。UI で「○○を削除しました」のトーストに使う。
 @freezed
-class DeleteTransactionResult with _$DeleteTransactionResult {
+abstract class DeleteTransactionResult with _$DeleteTransactionResult {
   const factory DeleteTransactionResult({
     required TransactionId deletedId,
   }) = _DeleteTransactionResult;

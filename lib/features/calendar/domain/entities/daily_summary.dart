@@ -19,7 +19,7 @@ part 'daily_summary.g.dart';
 /// - [expenseMinorByCurrency]: 通貨 → その日の支出合計（最小単位）。
 /// - [transactionCount]: その日の取引件数（全通貨込み）。
 @freezed
-class DailySummary with _$DailySummary {
+abstract class DailySummary with _$DailySummary {
   const DailySummary._();
 
   const factory DailySummary({

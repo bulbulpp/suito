@@ -10,7 +10,7 @@ part 'get_settings_io.g.dart';
 /// 引数なし。UseCase は `Future<Either<SettingsFailure, GetSettingsResult>>`
 /// を返す（[NoParams] ではなく専用型を切ったのは将来引数を追加しやすくするため）。
 @freezed
-class GetSettingsParams with _$GetSettingsParams {
+abstract class GetSettingsParams with _$GetSettingsParams {
   const factory GetSettingsParams() = _GetSettingsParams;
 
   factory GetSettingsParams.fromJson(Map<String, dynamic> json) =>
@@ -19,7 +19,7 @@ class GetSettingsParams with _$GetSettingsParams {
 
 /// `GetSettingsUseCase` の成功時の出力。
 @freezed
-class GetSettingsResult with _$GetSettingsResult {
+abstract class GetSettingsResult with _$GetSettingsResult {
   const factory GetSettingsResult({
     required AppSettings settings,
   }) = _GetSettingsResult;

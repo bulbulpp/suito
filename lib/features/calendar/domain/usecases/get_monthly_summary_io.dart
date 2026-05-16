@@ -7,7 +7,7 @@ part 'get_monthly_summary_io.g.dart';
 
 /// `GetMonthlySummaryUseCase` の入力。
 @freezed
-class GetMonthlySummaryParams with _$GetMonthlySummaryParams {
+abstract class GetMonthlySummaryParams with _$GetMonthlySummaryParams {
   const factory GetMonthlySummaryParams({
     required int year,
     required int month,
@@ -19,7 +19,7 @@ class GetMonthlySummaryParams with _$GetMonthlySummaryParams {
 
 /// `GetMonthlySummaryUseCase` の成功時の出力。
 @freezed
-class GetMonthlySummaryResult with _$GetMonthlySummaryResult {
+abstract class GetMonthlySummaryResult with _$GetMonthlySummaryResult {
   const factory GetMonthlySummaryResult({
     required MonthlySummary summary,
   }) = _GetMonthlySummaryResult;

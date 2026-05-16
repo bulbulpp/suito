@@ -10,7 +10,7 @@ part 'add_relay_io.g.dart';
 /// URL が `wss://` 以外の場合は UseCase 側で
 /// [NostrSyncFailure.invalidRelayUrl] を返す。
 @freezed
-class AddRelayParams with _$AddRelayParams {
+abstract class AddRelayParams with _$AddRelayParams {
   const factory AddRelayParams({
     required String url,
     String? displayName,
@@ -22,7 +22,7 @@ class AddRelayParams with _$AddRelayParams {
 
 /// `AddRelayUseCase` の成功時の出力。
 @freezed
-class AddRelayResult with _$AddRelayResult {
+abstract class AddRelayResult with _$AddRelayResult {
   const factory AddRelayResult({
     required RelayInfo relay,
   }) = _AddRelayResult;

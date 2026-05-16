@@ -13,7 +13,7 @@ part 'list_transactions_io.g.dart';
 /// `to` を null にすると「全期間の末尾」として扱う（実装側で `DateTime` の
 /// 最小値・最大値に置き換える）。
 @freezed
-class ListTransactionsParams with _$ListTransactionsParams {
+abstract class ListTransactionsParams with _$ListTransactionsParams {
   const factory ListTransactionsParams({
     DateTime? from,
     DateTime? to,
@@ -31,7 +31,7 @@ class ListTransactionsParams with _$ListTransactionsParams {
 /// 件数取得を別 UseCase にせず、一覧と一緒に総件数も返せるようにしておく
 /// （ページネーション導入時に便利）。MVP では `totalCount == items.length`。
 @freezed
-class ListTransactionsResult with _$ListTransactionsResult {
+abstract class ListTransactionsResult with _$ListTransactionsResult {
   const factory ListTransactionsResult({
     required List<Transaction> items,
     required int totalCount,

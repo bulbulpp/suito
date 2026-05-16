@@ -17,7 +17,7 @@ part 'monthly_summary.g.dart';
 /// - [expenseTotalMinorByCurrency]: 通貨 → 月の支出合計。
 /// - [dailySummaries]: 取引があった日の DailySummary。`date` 昇順。
 @freezed
-class MonthlySummary with _$MonthlySummary {
+abstract class MonthlySummary with _$MonthlySummary {
   const MonthlySummary._();
 
   const factory MonthlySummary({

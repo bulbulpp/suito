@@ -28,7 +28,7 @@ part 'transaction.g.dart';
 /// - [createdAt] / [updatedAt]: 監査用タイムスタンプ。Nostr 同期での
 ///   コンフリクト解消（last-write-wins）にも使う。
 @freezed
-class Transaction with _$Transaction {
+abstract class Transaction with _$Transaction {
   const Transaction._();
 
   const factory Transaction({

@@ -61,15 +61,21 @@ rust/target/
 target/
 **/*.rs.bk
 
-# === コード生成物（ローカルで再生成可能） ===
-**/*.g.dart
-**/*.freezed.dart
-**/*.gr.dart
-**/*.mocks.dart
-**/*.config.dart
-
-# 注: flutter_rust_bridge 生成物（lib/src/rust/**, rust/src/frb_generated*.rs）は
-# Flutter ビルドに必要なので git に **含める**（meiso 方式）。
+# === コード生成物 ===
+# meiso 方式 + プロジェクトルール（flutter-dart.mdc / prompts/02_phase0_contracts.md）
+# に従い、freezed / json_serializable / riverpod_generator / go_router の生成物は
+# **git に含める**。CI に build_runner ステップを追加せず、ローカル生成 → コミットの運用。
+# 再生成は `dart run build_runner build --delete-conflicting-outputs`。
+#
+# 含めるもの（明示的に追跡）:
+#   - **/*.freezed.dart
+#   - **/*.g.dart
+#   - **/*.gr.dart  (auto_route 等)
+#   - **/*.mocks.dart  (mocktail/mockito 生成テスト用モック)
+#   - **/*.config.dart
+#
+# 注: flutter_rust_bridge 生成物（lib/src/rust/**, rust/src/frb_generated*.rs）も
+# 同じく git に含める（Flutter ビルドに必要）。
 # .cursorignore では Cursor のコンテキストから除外しているが、git では追跡する。
 
 # === OS / IDE ===

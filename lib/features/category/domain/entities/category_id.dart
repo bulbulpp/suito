@@ -10,7 +10,7 @@ part 'category_id.g.dart';
 /// Domain 層では「文字列を内側に持つ ID」とだけ規定し、採番ルールは
 /// Infrastructure に委譲する。
 @freezed
-class CategoryId with _$CategoryId {
+abstract class CategoryId with _$CategoryId {
   const CategoryId._();
 
   const factory CategoryId({required String value}) = _CategoryId;

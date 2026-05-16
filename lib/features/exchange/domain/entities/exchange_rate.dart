@@ -22,7 +22,7 @@ part 'exchange_rate.g.dart';
 /// 浮動小数を使わないのは、家計簿としての累積誤差を避けるため。
 /// 表示時に小数表示が必要なら Presentation 層で整形する。
 @freezed
-class ExchangeRate with _$ExchangeRate {
+abstract class ExchangeRate with _$ExchangeRate {
   const ExchangeRate._();
 
   const factory ExchangeRate({

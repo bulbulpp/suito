@@ -11,7 +11,7 @@ part 'update_transaction_io.g.dart';
 /// 部分更新が必要になったら別 UseCase（例: `RecategorizeTransactionUseCase`）
 /// を切る。Phase 0 で多態を抱え込まないための割り切り。
 @freezed
-class UpdateTransactionParams with _$UpdateTransactionParams {
+abstract class UpdateTransactionParams with _$UpdateTransactionParams {
   const factory UpdateTransactionParams({
     required Transaction transaction,
   }) = _UpdateTransactionParams;
@@ -24,7 +24,7 @@ class UpdateTransactionParams with _$UpdateTransactionParams {
 ///
 /// 永続化後の最新状態（`updatedAt` が再採番されたもの）を返す。
 @freezed
-class UpdateTransactionResult with _$UpdateTransactionResult {
+abstract class UpdateTransactionResult with _$UpdateTransactionResult {
   const factory UpdateTransactionResult({
     required Transaction transaction,
   }) = _UpdateTransactionResult;

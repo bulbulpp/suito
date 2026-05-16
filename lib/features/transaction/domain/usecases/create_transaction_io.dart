@@ -15,7 +15,7 @@ part 'create_transaction_io.g.dart';
 /// Entity 全体ではなく「UseCase が必要とするフィールドだけ」を持つことで、
 /// id / createdAt / updatedAt の採番責務を UseCase + Infrastructure に押し込む。
 @freezed
-class CreateTransactionParams with _$CreateTransactionParams {
+abstract class CreateTransactionParams with _$CreateTransactionParams {
   const factory CreateTransactionParams({
     required TransactionType type,
     required Money amount,
@@ -35,7 +35,7 @@ class CreateTransactionParams with _$CreateTransactionParams {
 /// 単に永続化された [Transaction] を返すラッパ。Phase 1 で UseCase 実装が
 /// 「追加で何を返したいか」を判断するときに拡張しやすくしておく。
 @freezed
-class CreateTransactionResult with _$CreateTransactionResult {
+abstract class CreateTransactionResult with _$CreateTransactionResult {
   const factory CreateTransactionResult({
     required Transaction transaction,
   }) = _CreateTransactionResult;

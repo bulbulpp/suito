@@ -11,7 +11,7 @@ part 'create_bitcoin_record_io.g.dart';
 /// UI からは「sat 量・カテゴリ・メモ」だけを受け取る。
 /// レート取得・スナップショット作成・Transaction 化・保存は UseCase 内で連結する。
 @freezed
-class CreateBitcoinRecordParams with _$CreateBitcoinRecordParams {
+abstract class CreateBitcoinRecordParams with _$CreateBitcoinRecordParams {
   const factory CreateBitcoinRecordParams({
     required int satAmount,
     required CategoryId categoryId,
@@ -28,7 +28,7 @@ class CreateBitcoinRecordParams with _$CreateBitcoinRecordParams {
 /// 永続化された Transaction（必ず `paymentMethod == bitcoin`、
 /// `bitcoinSnapshot != null`、`amount` は SatMoney）。
 @freezed
-class CreateBitcoinRecordResult with _$CreateBitcoinRecordResult {
+abstract class CreateBitcoinRecordResult with _$CreateBitcoinRecordResult {
   const factory CreateBitcoinRecordResult({
     required Transaction transaction,
   }) = _CreateBitcoinRecordResult;

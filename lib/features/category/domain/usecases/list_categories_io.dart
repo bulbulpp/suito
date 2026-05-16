@@ -8,7 +8,7 @@ part 'list_categories_io.g.dart';
 
 /// `ListCategoriesUseCase` の入力。
 @freezed
-class ListCategoriesParams with _$ListCategoriesParams {
+abstract class ListCategoriesParams with _$ListCategoriesParams {
   const factory ListCategoriesParams({
     CategoryKind? kind,
     @Default(false) bool includeHidden,
@@ -20,7 +20,7 @@ class ListCategoriesParams with _$ListCategoriesParams {
 
 /// `ListCategoriesUseCase` の成功時の出力。
 @freezed
-class ListCategoriesResult with _$ListCategoriesResult {
+abstract class ListCategoriesResult with _$ListCategoriesResult {
   const factory ListCategoriesResult({
     required List<Category> items,
   }) = _ListCategoriesResult;

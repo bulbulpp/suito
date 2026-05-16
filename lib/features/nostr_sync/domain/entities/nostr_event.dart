@@ -18,7 +18,7 @@ part 'nostr_event.g.dart';
 /// - [tags]: NIP-01 の tag 配列（["e", "<event-id>"] 等）。
 /// - [sig]: 64 バイトの BIP-340 Schnorr 署名（hex 128 文字）。
 @freezed
-class NostrEvent with _$NostrEvent {
+abstract class NostrEvent with _$NostrEvent {
   const NostrEvent._();
 
   const factory NostrEvent({

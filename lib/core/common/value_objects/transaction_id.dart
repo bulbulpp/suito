@@ -11,7 +11,7 @@ part 'transaction_id.g.dart';
 /// 生成方法は Infrastructure 層が決める（UUIDv4 か、Nostr イベント ID を
 /// 流用するか、など）。Domain 層では「文字列を内側に持つ ID」とだけ規定する。
 @freezed
-class TransactionId with _$TransactionId {
+abstract class TransactionId with _$TransactionId {
   const TransactionId._();
 
   const factory TransactionId({required String value}) = _TransactionId;

@@ -19,7 +19,7 @@ part 'category.g.dart';
 ///   「非表示」にできる仕様（FEATURES.md 2.2）。
 /// - [sortOrder]: 並び順。小さいほど上に表示。
 @freezed
-class Category with _$Category {
+abstract class Category with _$Category {
   const Category._();
 
   const factory Category({

@@ -7,7 +7,7 @@ part 'get_rates_io.g.dart';
 
 /// `GetRatesUseCase` の入力。
 @freezed
-class GetRatesParams with _$GetRatesParams {
+abstract class GetRatesParams with _$GetRatesParams {
   const factory GetRatesParams({
     @Default(false) bool forceRefresh,
   }) = _GetRatesParams;
@@ -22,7 +22,7 @@ class GetRatesParams with _$GetRatesParams {
 /// - [isFromCache]: キャッシュから返したかどうか。UI で「最終更新: N 分前」
 ///   などの表示判定に使う。
 @freezed
-class GetRatesResult with _$GetRatesResult {
+abstract class GetRatesResult with _$GetRatesResult {
   const factory GetRatesResult({
     required List<ExchangeRate> rates,
     required bool isFromCache,

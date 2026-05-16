@@ -52,7 +52,7 @@ enum AppLocale {
 ///   実装は OS の Keychain / Keystore + ローカル生体 API（`security.mdc`）。
 /// - [updatedAt]: 最後に変更した時刻（同期コンフリクト解消用）。
 @freezed
-class AppSettings with _$AppSettings {
+abstract class AppSettings with _$AppSettings {
   const AppSettings._();
 
   const factory AppSettings({

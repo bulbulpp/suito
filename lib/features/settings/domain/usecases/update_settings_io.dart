@@ -10,7 +10,7 @@ part 'update_settings_io.g.dart';
 /// 部分更新ではなく「更新後の AppSettings をそのまま渡す」契約。
 /// 部分更新が必要なら UI 側で `current.copyWith(...)` を作って渡す。
 @freezed
-class UpdateSettingsParams with _$UpdateSettingsParams {
+abstract class UpdateSettingsParams with _$UpdateSettingsParams {
   const factory UpdateSettingsParams({
     required AppSettings settings,
   }) = _UpdateSettingsParams;
@@ -21,7 +21,7 @@ class UpdateSettingsParams with _$UpdateSettingsParams {
 
 /// `UpdateSettingsUseCase` の成功時の出力。
 @freezed
-class UpdateSettingsResult with _$UpdateSettingsResult {
+abstract class UpdateSettingsResult with _$UpdateSettingsResult {
   const factory UpdateSettingsResult({
     required AppSettings settings,
   }) = _UpdateSettingsResult;
