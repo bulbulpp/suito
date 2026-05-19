@@ -9,6 +9,7 @@
 import 'api/bitcoin.dart';
 import 'api/exchange.dart';
 import 'api/greet.dart';
+import 'api/nostr.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'frb_generated.dart';
