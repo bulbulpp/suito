@@ -6,6 +6,7 @@
 import 'api/bitcoin.dart';
 import 'api/exchange.dart';
 import 'api/greet.dart';
+import 'api/nostr.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'frb_generated.dart';
@@ -68,7 +69,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.12.0';
 
   @override
-  int get rustContentHash => -769199697;
+  int get rustContentHash => 333747364;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -91,6 +92,24 @@ abstract class RustLibApi extends BaseApi {
   Future<String> crateApiGreetGreet({required String name});
 
   Future<void> crateApiGreetInitApp();
+
+  Future<String> crateApiNostrNostrNip44DecryptV2FromSelf({
+    required String ciphertext,
+    required String secretKey,
+  });
+
+  Future<String> crateApiNostrNostrNip44EncryptV2ForSelf({
+    required String plaintext,
+    required String secretKey,
+  });
+
+  Future<String> crateApiNostrNostrSignEncryptedReplaceableEvent({
+    required String jsonPayload,
+    required String secretKey,
+    required String dTagIdentifier,
+  });
+
+  Future<void> crateApiNostrNostrVerifyEventJson({required String eventJson});
 }
 
 class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
@@ -221,6 +240,144 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   TaskConstMeta get kCrateApiGreetInitAppConstMeta =>
       const TaskConstMeta(debugName: "init_app", argNames: []);
+
+  @override
+  Future<String> crateApiNostrNostrNip44DecryptV2FromSelf({
+    required String ciphertext,
+    required String secretKey,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(ciphertext, serializer);
+          sse_encode_String(secretKey, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 5,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiNostrNostrNip44DecryptV2FromSelfConstMeta,
+        argValues: [ciphertext, secretKey],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiNostrNostrNip44DecryptV2FromSelfConstMeta =>
+      const TaskConstMeta(
+        debugName: "nostr_nip44_decrypt_v2_from_self",
+        argNames: ["ciphertext", "secretKey"],
+      );
+
+  @override
+  Future<String> crateApiNostrNostrNip44EncryptV2ForSelf({
+    required String plaintext,
+    required String secretKey,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(plaintext, serializer);
+          sse_encode_String(secretKey, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 6,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiNostrNostrNip44EncryptV2ForSelfConstMeta,
+        argValues: [plaintext, secretKey],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiNostrNostrNip44EncryptV2ForSelfConstMeta =>
+      const TaskConstMeta(
+        debugName: "nostr_nip44_encrypt_v2_for_self",
+        argNames: ["plaintext", "secretKey"],
+      );
+
+  @override
+  Future<String> crateApiNostrNostrSignEncryptedReplaceableEvent({
+    required String jsonPayload,
+    required String secretKey,
+    required String dTagIdentifier,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(jsonPayload, serializer);
+          sse_encode_String(secretKey, serializer);
+          sse_encode_String(dTagIdentifier, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 7,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiNostrNostrSignEncryptedReplaceableEventConstMeta,
+        argValues: [jsonPayload, secretKey, dTagIdentifier],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiNostrNostrSignEncryptedReplaceableEventConstMeta =>
+      const TaskConstMeta(
+        debugName: "nostr_sign_encrypted_replaceable_event",
+        argNames: ["jsonPayload", "secretKey", "dTagIdentifier"],
+      );
+
+  @override
+  Future<void> crateApiNostrNostrVerifyEventJson({required String eventJson}) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(eventJson, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 8,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiNostrNostrVerifyEventJsonConstMeta,
+        argValues: [eventJson],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiNostrNostrVerifyEventJsonConstMeta =>
+      const TaskConstMeta(
+        debugName: "nostr_verify_event_json",
+        argNames: ["eventJson"],
+      );
 
   @protected
   AnyhowException dco_decode_AnyhowException(dynamic raw) {
